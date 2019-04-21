@@ -553,14 +553,181 @@ ggarrange(plot_1_suicide_gni, plot_2_population_gni, labels = c("Suicide vs GNI"
 
 
 
+##### Insight 4 : Young people (15-24 people M and F) in first world countries vs third world, suicide numbers top 5
+
+## We should bring in another dataset here that has GNI Per Capita using the Atlas method
+## this will give us a list of the richest countries.
+
+# Copy of our dataset
+insight_four_economics_and_young_people <- master_dataset
+
+# Get our GNI dataset
+gni_data <- gni_dataset
+
+# Lets merge our gni dataset into the master
+insight_four_economics_and_young_people["UID"] <- 0
+gni_data["UID"] <- 0
+
+# Then we paste and combine country and year to make a matching UID in both datasets
+insight_four_economics_and_young_people$UID <- paste(insight_four_economics_and_young_people$country,insight_four_economics_and_young_people$year, sep="-")
+gni_data$UID <- paste(gni_data$Country.Name,gni_data$Time, sep="-")
+
+# We combine them by UID 
+insight_four_economics_and_young_people = merge(insight_four_economics_and_young_people, gni_data, by='UID')
+
+# We can now delete columns we dont need
+insight_four_economics_and_young_people$UID = NULL
+insight_four_economics_and_young_people$Time = NULL
+insight_four_economics_and_young_people$Country.Name = NULL
+insight_four_economics_and_young_people$Country.Code = NULL
+insight_four_economics_and_young_people$Time.Code = NULL
+
+# delete all NA's
+insight_four_economics_and_young_people[insight_four_economics_and_young_people == ".."] <- NA
+
+insight_four_economics_and_young_people <- na.omit(insight_four_economics_and_young_people)
+
+# Now we filter to just 2013 (Gives a nice data rannge)
+data_filtered <- insight_four_economics_and_young_people %>%
+ group_by(country) %>%
+ dplyr::filter(year == 2013)
+
+### Highest GNI
+# Group Ages by country and gni more than 40000
+df_filter_ages <- data_filtered %>%
+  dplyr::filter(age == "15-24 years" & as.numeric(as.character(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) > 40000) %>%
+  dplyr::group_by(country, age)
+
+# Rearrange from highest to lowest
+df_filter_high_gni <- df_filter_ages %>%
+  dplyr::arrange(desc(as.numeric(as.character(df_filter_ages$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.))))
+
+# Subset the first 10 (We select 20 as we have males and Females!)
+top_ten_highest_gni_countries = df_filter_ages[1:10,]
+
+# aggregate each sex
+top_ten_highest_gni_countries <- aggregate(top_ten_highest_gni_countries['suicides_no'], by = top_ten_highest_gni_countries['country'], sum)
+
+### Lowest GNI < 20000
+# So we have our top ten countries which is great, now we get the lowest GNI countries...
+top_ten_lowest_gni_countries <- data_filtered %>%
+  dplyr::filter(age == "15-24 years" & as.numeric(as.character(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) < 15000) %>%
+  dplyr::group_by(country, age)
+
+# Arrange
+top_ten_lowest_gni_countries <- top_ten_lowest_gni_countries %>%
+  dplyr::arrange(desc(as.numeric(as.character(top_ten_lowest_gni_countries$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.))))
+
+# Subset the first 10 (We select 20 as we have males and Females!)
+top_ten_lowest_gni_countries = top_ten_lowest_gni_countries[1:10,]
+
+# Aggregate each sex
+
+top_ten_lowest_gni_countries <- aggregate(top_ten_lowest_gni_countries['suicides_no'], by = top_ten_lowest_gni_countries['country'], sum)
 
 
+ggplot(top_ten_highest_gni_countries, aes(x = country, y = suicides_no, fill = top_ten_highest_gni_countries$country)) + 
+ geom_bar(stat = "identity", position = "dodge") + 
+  labs(title = "GNI Per Capita > 40,000$", 
+       subtitle = "Young people only * (15 - 24 years old)", 
+       x = "Country", 
+       y = "Suicides", 
+       fill = "Countries (Highest GNI Per Capita)")
+
+ggplot(top_ten_lowest_gni_countries, aes(x = country, y = suicides_no, fill = top_ten_lowest_gni_countries$country)) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  labs(title = "GNI Per Capita < 15,000$", 
+       subtitle = "Young people only * (15 - 24 years old)", 
+       x = "Country", 
+       y = "Suicides", 
+       fill = "Countries (Lowest GNI Per Capita)")
+
+### So just by analysing the graphs, suicide among the top grossing gni are, generally lower, we should look into this a bit more
+
+#### Insight 5 : Europe and GNI, is there a trend?
+
+# We make a copy of our gni dataset
+gni_copy_europe <- gni_dataset
+
+# Make a copy of master
+gni_master_dataset_euro <- master_dataset
+
+# Now lets replace "..." with na and remove :)
+gni_copy_europe[gni_copy_europe == ".."] <- NA
+gni_copy_europe <- na.omit(gni_copy_europe)
+
+gni_master_dataset_euro[gni_master_dataset_euro == ".."] <- NA
+gni_master_dataset_euro <- na.omit(gni_master_dataset_euro)
+
+# Lets creata a UID for our master and gni datasets
+gni_copy_europe["UID"] <- 0
+gni_master_dataset_euro["UID"] <- 0
+
+# Then we paste and combine country and year to make a matching UID in both datasets
+gni_copy_europe$UID <- paste(gni_copy_europe$Country.Name,gni_copy_europe$Time, sep="-")
+
+gni_master_dataset_euro$UID <- paste(gni_master_dataset_euro$country,gni_master_dataset_euro$year, sep="-")
 
 
+# We combine them by UID 
+gni_master_dataset_euro = merge(gni_master_dataset_euro, gni_copy_europe, by='UID')
 
 
+# Great, we have our merged data, delete what we dont need
+gni_master_dataset_euro$Time.Code <- NULL
+gni_master_dataset_euro$UID <- NULL
+gni_master_dataset_euro$Time <- NULL
+gni_master_dataset_euro$`GDP (Current US$)` <- NULL
+gni_master_dataset_euro$`GDP Growth (Annual %)` <- NULL
+gni_master_dataset_euro$`GNI (Current US$)` <- NULL
+gni_master_dataset_euro$`GNI Growth (Annual %)` <- NULL
+gni_master_dataset_euro$`GNI Per Capita (Annual %)` <- NULL
+gni_master_dataset_euro$Country.Name <- NULL
+gni_master_dataset_euro$age <- NULL
+gni_master_dataset_euro$Country.Code <- NULL
 
+# Now, we filter by europe
+gni_master_dataset_euro <- gni_master_dataset_euro %>%
+  dplyr::filter(gni_master_dataset_euro$country == "Austria"|
+                  gni_master_dataset_euro$country == "Italy" | 
+                  gni_master_dataset_euro$country == "Belgium" | 
+                  gni_master_dataset_euro$country == "Latvia" |
+                  gni_master_dataset_euro$country == "Bulgaria" |
+                  gni_master_dataset_euro$country == "Lithuania" |
+                  gni_master_dataset_euro$country == "Luxembourg" | 
+                  gni_master_dataset_euro$country == "Cyprus" | 
+                  gni_master_dataset_euro$country == "Malta" | 
+                  gni_master_dataset_euro$country == "Czechia" | 
+                  gni_master_dataset_euro$country == "Netherlands" | 
+                  gni_master_dataset_euro$country == "Denmark" | 
+                  gni_master_dataset_euro$country == "Poland" | 
+                  gni_master_dataset_euro$country == "Estonia" | 
+                  gni_master_dataset_euro$country == "Portugal" | 
+                  gni_master_dataset_euro$country == "Finland" | 
+                  gni_master_dataset_euro$country == "Romania" | 
+                  gni_master_dataset_euro$country == "France" | 
+                  gni_master_dataset_euro$country == "Slovakia" | 
+                  gni_master_dataset_euro$country == "Germany" | 
+                  gni_master_dataset_euro$country == "Slovenia" | 
+                  gni_master_dataset_euro$country == "Greece" | 
+                  gni_master_dataset_euro$country == "Spain" | 
+                  gni_master_dataset_euro$country == "Hungary" | 
+                  gni_master_dataset_euro$country == "Sweden" | 
+                  gni_master_dataset_euro$country == "Ireland" | 
+                  gni_master_dataset_euro$country == "United Kingdom")
 
+gni_master_dataset_euro <- gni_master_dataset_euro %>%
+  dplyr::group_by(country) %>%
+  dplyr::summarize(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD. = first(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.), suicide_per_100k = (sum(as.numeric(suicides_no)) / sum(as.numeric(population))) * 100000)
+
+  
+# We have europe now with GNI for each country 
+ggplot(gni_master_dataset_euro, aes(x = as.numeric(as.character(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)), y = suicide_per_100k, col = country)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", aes(group = 3)) + 
+  scale_x_continuous(labels=scales::dollar_format(prefix="$"), breaks = seq(0, 40000, 70000))
+
+### Interesting, we can clearly see as gni or how rich a country becomes, the suicide rate dramatically decrease!
 
 
 
