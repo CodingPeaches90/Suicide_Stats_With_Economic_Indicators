@@ -3,6 +3,8 @@
 # An analysis on suicide rates with Economical Factors  #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
+# I am getting the datasets from "Import Dataset" button within R - Studio
+
 # Getting summary of new datasets and checking for NA's
 summary(who_suicide_statistics)
 summary(economics_dataset)
@@ -209,6 +211,7 @@ if(!require(corrplot)){
   install.packages("corrplot")
   library(corrplot)
 }
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Now we have our imports                                                                                     #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
@@ -316,7 +319,7 @@ plot(k_meanns_european[, ], col = k_means_clus_euro$cluster)
 # Furthermore, on level 4, all have a correlation (suicide v gni, pop v gni, gdp vs gni etc). 
 
 
-####### Linear Regression Model
+####### Linear Regression Model (Help from : https://www.datacamp.com/community/tutorials/linear-regression-R#fit)
 # So we should analyse what factors (gdp i.e.) have an impact on the suicide numbers
 linear_model_dataset <- master_dataset
 
@@ -376,27 +379,34 @@ l$`GNI Per Capita (Annual %)` <- as.numeric(as.character(l$`GNI Per Capita (Annu
 l$`Unemployment (% of total labour force` <- as.numeric(as.character(l$`Unemployment (% of total labour force`))
 l$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD. <- as.numeric(as.character(l$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.))
 
+
 # linear model
-model1 <- lm(as.numeric(as.character(suicide_per_100k)) ~ as.numeric(as.character(l$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) + as.numeric(as.character(l$`GNI (Current US$)`)) + as.numeric(as.character(l$`GNI Per Capita (Annual %)`)) + as.numeric(as.character(l$`GDP Per Capita`)) + as.numeric(as.character(l$`GNI Growth (Annual %)`)) , data = l)
+model1 <- lm(as.numeric(as.character(suicide_per_100k)) ~ as.numeric(as.character(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) + as.numeric(as.character(`GNI Per Capita (Annual %)`)) + as.numeric(as.character(`GDP Per Capita`)) + as.numeric(as.character(`GNI Growth (Annual %)`)), data = l)
 options(scipen = 999)
 
 summary(model1)
 # we are getting improvements on our R square value. We can associate 58.93% of all suicides to contribute to the above factors
 
+set.seed(999)  # setting seed to reproduce results of random sampling
+sample_training <- sample(1:nrow(l), 0.8*nrow(l))  # row indices for training data
+
+trainingData <- l[sample_training, ]  # model training data
+testData  <- l[-sample_training, ]   # test data
 
 
+# so we have training and test, lets apply our linear function to training first
+linear_model_predict_suicide <- lm(as.numeric(as.character(suicide_per_100k)) ~ as.numeric(as.character(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) + as.numeric(as.character(`GNI Per Capita (Annual %)`)) + as.numeric(as.character(`GDP Per Capita`)) + as.numeric(as.character(`GNI Growth (Annual %)`)), data = trainingData)
+summary(linear_model_predict_suicide)
 
+# Adjusted R is 0.305 thus we can say that we can explain 0.3052 or 30% of our dataset being attributed to economical factors
+# Now we should put our model to the test 
+predicting_dataset <- predict(linear_model_predict_suicide,testData,type = "response")
 
+residuals <- testData$suicide_per_100k - predicting_dataset
 
+linreg_pred <- data.frame("Predicted" = predicting_dataset, "Actual" = testData$suicide_per_100k, "Residual" = residuals)
 
-# now we should make a subset of europe, just incase we might need this full list again (in accordance to -> https://europa.eu/european-union/about-eu/countries_en)
-
-
-
-
-
-
-
+plot(residuals, pch = 16, col = "red")
 
 
 ##### Construct a Heat Map in order to demonstrate what variables correlate to each other
@@ -583,7 +593,6 @@ ggplot(filtered_countries_only_europe, aes(x = `GDP Per Capita`, y = suicide_per
 # Explanation : So analysing the eurozone, we can see as GDP per capita gets lower
 
 
-
 ## # INSIGHT 3: Lets analyse our clusteroids that we plotted using our Kmeans Algoritihim
 
 # We make a copy of master
@@ -751,8 +760,6 @@ ggplot(gni_master_dataset_euro, aes(x = as.numeric(as.character(GNI.per.capita..
   scale_x_continuous(labels=scales::dollar_format(prefix="$"), breaks = seq(0, 40000, 70000))
 
 ### Interesting, we can clearly see as gni or how rich a country becomes, the suicide rate dramatically decrease!
-
-
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
