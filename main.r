@@ -381,7 +381,10 @@ l$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD. <- as.numeri
 
 
 # linear model
-model1 <- lm(as.numeric(as.character(suicide_per_100k)) ~ as.numeric(as.character(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) + as.numeric(as.character(`GNI Per Capita (Annual %)`)) + as.numeric(as.character(`GDP Per Capita`)) + as.numeric(as.character(`GNI Growth (Annual %)`)), data = l)
+model1 <- lm(as.numeric(as.character(suicide_per_100k)) ~ 
+               as.numeric(as.character(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) + 
+               as.numeric(as.character(`GNI Per Capita (Annual %)`)) + as.numeric(as.character(`GDP Per Capita`)) + 
+               as.numeric(as.character(`GNI Growth (Annual %)`)), data = l)
 options(scipen = 999)
 
 summary(model1)
@@ -395,13 +398,17 @@ testData  <- l[-sample_training, ]   # test data
 
 
 # so we have training and test, lets apply our linear function to training first
-linear_model_predict_suicide <- lm(as.numeric(as.character(suicide_per_100k)) ~ as.numeric(as.character(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) + as.numeric(as.character(`GNI Per Capita (Annual %)`)) + as.numeric(as.character(`GDP Per Capita`)) + as.numeric(as.character(`GNI Growth (Annual %)`)), data = trainingData)
+linear_model_predict_suicide <- lm(as.numeric(as.character(suicide_per_100k)) ~ as.numeric(as.character(GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) + 
+                                     as.numeric(as.character(`GNI Per Capita (Annual %)`)) + 
+                                     as.numeric(as.character(`GDP Per Capita`)) + 
+                                     as.numeric(as.character(`GNI Growth (Annual %)`)), data = trainingData)
 summary(linear_model_predict_suicide)
 
-# Adjusted R is 0.305 thus we can say that we can explain 0.3052 or 30% of our dataset being attributed to economical factors
+# Adjusted R is 0.4651 thus we can say that we can explain 0.4651 or 47% of our dataset being attributed to economical factors
 # Now we should put our model to the test 
 predicting_dataset <- predict(linear_model_predict_suicide,testData,type = "response")
 
+# ref https://www.datacamp.com/community/tutorials/linear-regression-R
 residuals <- testData$suicide_per_100k - predicting_dataset
 
 linreg_pred <- data.frame("Predicted" = predicting_dataset, "Actual" = testData$suicide_per_100k, "Residual" = residuals)
@@ -410,7 +417,9 @@ plot(residuals, pch = 16, col = "red")
 
 
 ##### Construct a Heat Map in order to demonstrate what variables correlate to each other
-copy_heat_linear_datset <- l
+## ref -> http://www.sthda.com/english/wiki/ggcorrplot-visualization-of-a-correlation-matrix-using-ggplot2
+# AND http://www.sthda.com/english/wiki/ggplot2-quick-correlation-matrix-heatmap-r-software-and-data-visualization
+
 
 # delete non numerical
 copy_heat_linear_datset$country <- NULL
@@ -581,6 +590,7 @@ ggplot(filtered_countries_only_europe, aes(x = `GDP Per Capita`, y = suicide_per
   geom_point() + 
   scale_x_continuous(labels=scales::dollar_format(prefix="$"), breaks = seq(0, 70000, 10000))
 
+# ignore this linear model, i was playing around with variables
 linr <- lm(as.numeric(as.character(suicide_per_100k)) ~ as.numeric(as.character(filtered_countries_only_europe$`GNI (Current US$)`)) + as.numeric(as.character(filtered_countries_only_europe$`GNI Per Capita (Annual %)`)) + as.numeric(as.character(filtered_countries_only_europe$`GDP Per Capita`)) + as.numeric(as.character(filtered_countries_only_europe$`GNI Growth (Annual %)`)) , data = filtered_countries_only_europe)
 
 summary(linr)
@@ -690,6 +700,8 @@ top_ten_lowest_gni_countries = top_ten_lowest_gni_countries[1:10,]
 
 top_ten_lowest_gni_countries <- aggregate(top_ten_lowest_gni_countries['suicides_no'], by = top_ten_lowest_gni_countries['country'], sum)
 
+# Got some help from a kaggle kernal with these visuals, hoever they have being changed as required
+# ref -> scroll down to (3.3.2 Age Rates) -> https://www.kaggle.com/lmorgan95/r-suicide-rates-in-depth-stats-insights
 
 ggplot(top_ten_highest_gni_countries, aes(x = country, y = suicides_no, fill = top_ten_highest_gni_countries$country)) + 
  geom_bar(stat = "identity", position = "dodge") + 
