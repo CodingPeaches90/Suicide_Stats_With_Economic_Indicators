@@ -6,10 +6,12 @@
 # Getting summary of new datasets and checking for NA's
 summary(who_suicide_statistics)
 summary(economics_dataset)
+summary(gni_dataset)
 
 # Checking structure of the datasets
 str(who_suicide_statistics)
 str(economics_dataset)
+str(gni_dataset)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Now we Start cleaning our FIRST data set  (suicide)                                                         # 
@@ -123,6 +125,30 @@ master_dataset = merge(new_suicide_dataset, new_economics_dataset, by='UID')
 master_dataset$UID = NULL
 master_dataset$Year = NULL
 master_dataset$Country = NULL
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# We have another dataset called GNI, lets add this to our master now                                         #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+# Quickly replace ".." with NA
+gni_dataset[gni_dataset == ".."] <- NA
+
+# Make a new UID column in both master and also GNI
+master_dataset["UID"] <- 0
+gni_dataset["UID"] <- 0
+
+# We paste year and country for uid
+master_dataset$UID <- paste(master_dataset$country,master_dataset$year, sep="-")
+gni_dataset$UID <- paste(gni_dataset$Country.Name,gni_dataset$Time, sep="-")
+
+# Match
+master_dataset = merge(master_dataset, gni_dataset, by='UID')
+master_dataset$UID = NULL
+master_dataset$Time = NULL
+master_dataset$Time.Code = NULL
+master_dataset$Country.Name = NULL
+master_dataset$Country.Code = NULL
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # We now have a master dataset with our needed data, now we export to CSV                                     #
@@ -263,6 +289,8 @@ k_meanns_european$`GNI (Current US$)` <- as.numeric(as.character(k_meanns_europe
 k_meanns_european$`GNI Growth (Annual %)` <- as.numeric(as.character(k_meanns_european$`GNI Growth (Annual %)`))
 k_meanns_european$`GNI Per Capita (Annual %)` <- as.numeric(as.character(k_meanns_european$`GNI Per Capita (Annual %)`))
 k_meanns_european$`Unemployment (% of total labour force` <- as.numeric(as.character(k_meanns_european$`Unemployment (% of total labour force`))
+k_meanns_european$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD. <- as.numeric(as.character(kmeans_european_countries$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.))
+
 
 # We normalize our dataset columns
 normalize <- function(x) {
@@ -311,15 +339,64 @@ country_mean_gdp <- linear_model_dataset %>%
 # need match with country and GDP
 l <- cbind(country_mean_gdp, linear_model_dataset[match(country_mean_gdp$country, linear_model_dataset$country), ])
 
+# filter
+# Lets filter to only european countries
+l <- l[
+  l$country == "Austria"|
+    l$country == "Italy" | 
+    l$country == "Belgium" | 
+    l$country == "Latvia" |
+    l$country == "Bulgaria" |
+    l$country == "Lithuania" |
+    l$country == "Luxembourg" | 
+    l$country == "Cyprus" | 
+    l$country == "Malta" | 
+    l$country == "Czechia" | 
+    l$country == "Netherlands" | 
+    l$country == "Denmark" | 
+    l$country == "Poland" | 
+    l$country == "Estonia" | 
+    l$country == "Portugal" | 
+    l$country == "Finland" | 
+    l$country == "Romania" | 
+    l$country == "France" | 
+    l$country == "Slovakia" | 
+    l$country == "Germany" | 
+    l$country == "Slovenia" | 
+    l$country == "Greece" | 
+    l$country == "Spain" | 
+    l$country == "Hungary" | 
+    l$country == "Sweden" | 
+    l$country == "Ireland" | 
+    l$country == "United Kingdom",]
 
 # Doing numerics
 l$`GDP Per Capita` <- as.numeric(as.character(l$`GDP Per Capita`))
 l$`GNI Per Capita (Annual %)` <- as.numeric(as.character(l$`GNI Per Capita (Annual %)`))
 l$`Unemployment (% of total labour force` <- as.numeric(as.character(l$`Unemployment (% of total labour force`))
+l$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD. <- as.numeric(as.character(l$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.))
 
-model1 <- lm(suicide_per_100k ~ l$`GDP Per Capita` + l$`GNI Per Capita (Annual %)` + l$`Unemployment (% of total labour force` + l$population + l$suicides_no, data = l)
+# linear model
+model1 <- lm(as.numeric(as.character(suicide_per_100k)) ~ as.numeric(as.character(l$GNI.per.capita..PPP..current.international.....NY.GNP.PCAP.PP.CD.)) + as.numeric(as.character(l$`GNI (Current US$)`)) + as.numeric(as.character(l$`GNI Per Capita (Annual %)`)) + as.numeric(as.character(l$`GDP Per Capita`)) + as.numeric(as.character(l$`GNI Growth (Annual %)`)) , data = l)
 options(scipen = 999)
+
 summary(model1)
+# we are getting improvements on our R square value. We can associate 58.93% of all suicides to contribute to the above factors
+
+
+
+
+
+
+
+# now we should make a subset of europe, just incase we might need this full list again (in accordance to -> https://europa.eu/european-union/about-eu/countries_en)
+
+
+
+
+
+
+
 
 
 ##### Construct a Heat Map in order to demonstrate what variables correlate to each other
@@ -561,27 +638,6 @@ ggarrange(plot_1_suicide_gni, plot_2_population_gni, labels = c("Suicide vs GNI"
 # Copy of our dataset
 insight_four_economics_and_young_people <- master_dataset
 
-# Get our GNI dataset
-gni_data <- gni_dataset
-
-# Lets merge our gni dataset into the master
-insight_four_economics_and_young_people["UID"] <- 0
-gni_data["UID"] <- 0
-
-# Then we paste and combine country and year to make a matching UID in both datasets
-insight_four_economics_and_young_people$UID <- paste(insight_four_economics_and_young_people$country,insight_four_economics_and_young_people$year, sep="-")
-gni_data$UID <- paste(gni_data$Country.Name,gni_data$Time, sep="-")
-
-# We combine them by UID 
-insight_four_economics_and_young_people = merge(insight_four_economics_and_young_people, gni_data, by='UID')
-
-# We can now delete columns we dont need
-insight_four_economics_and_young_people$UID = NULL
-insight_four_economics_and_young_people$Time = NULL
-insight_four_economics_and_young_people$Country.Name = NULL
-insight_four_economics_and_young_people$Country.Code = NULL
-insight_four_economics_and_young_people$Time.Code = NULL
-
 # delete all NA's
 insight_four_economics_and_young_people[insight_four_economics_and_young_people == ".."] <- NA
 
@@ -646,45 +702,12 @@ ggplot(top_ten_lowest_gni_countries, aes(x = country, y = suicides_no, fill = to
 
 #### Insight 5 : Europe and GNI, is there a trend?
 
-# We make a copy of our gni dataset
-gni_copy_europe <- gni_dataset
-
 # Make a copy of master
 gni_master_dataset_euro <- master_dataset
 
 # Now lets replace "..." with na and remove :)
-gni_copy_europe[gni_copy_europe == ".."] <- NA
-gni_copy_europe <- na.omit(gni_copy_europe)
-
 gni_master_dataset_euro[gni_master_dataset_euro == ".."] <- NA
 gni_master_dataset_euro <- na.omit(gni_master_dataset_euro)
-
-# Lets creata a UID for our master and gni datasets
-gni_copy_europe["UID"] <- 0
-gni_master_dataset_euro["UID"] <- 0
-
-# Then we paste and combine country and year to make a matching UID in both datasets
-gni_copy_europe$UID <- paste(gni_copy_europe$Country.Name,gni_copy_europe$Time, sep="-")
-
-gni_master_dataset_euro$UID <- paste(gni_master_dataset_euro$country,gni_master_dataset_euro$year, sep="-")
-
-
-# We combine them by UID 
-gni_master_dataset_euro = merge(gni_master_dataset_euro, gni_copy_europe, by='UID')
-
-
-# Great, we have our merged data, delete what we dont need
-gni_master_dataset_euro$Time.Code <- NULL
-gni_master_dataset_euro$UID <- NULL
-gni_master_dataset_euro$Time <- NULL
-gni_master_dataset_euro$`GDP (Current US$)` <- NULL
-gni_master_dataset_euro$`GDP Growth (Annual %)` <- NULL
-gni_master_dataset_euro$`GNI (Current US$)` <- NULL
-gni_master_dataset_euro$`GNI Growth (Annual %)` <- NULL
-gni_master_dataset_euro$`GNI Per Capita (Annual %)` <- NULL
-gni_master_dataset_euro$Country.Name <- NULL
-gni_master_dataset_euro$age <- NULL
-gni_master_dataset_euro$Country.Code <- NULL
 
 # Now, we filter by europe
 gni_master_dataset_euro <- gni_master_dataset_euro %>%
@@ -734,105 +757,3 @@ ggplot(gni_master_dataset_euro, aes(x = as.numeric(as.character(GNI.per.capita..
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-#IGNORE, WAS TESTING THESE 
-
-plot(dfr$Year, dfr$su_numbers, type="l", lwd=2, col="red",xlab="Year", 
-     ylab="Jobs", ylim=range(c(dfr$su_numbers,dfr$GDP))) 
-
-lines(dfr$Year, dfr$GDP, lwd=2, col="green")
-
-# ANALYSIS 1 : Ireland and the Celtic Tiger
-# So we start off with firstly analsing Ireland suicide rates during the time of the Celtic Tiger VS Recession
-# IF WE APPLY REGRESSION WE CAN SEE THAT SUICIDES ARE INCREASING AS YEARS GO BY
-ggplot(subset(master_dataset, country == "Ireland"),
-       aes(x = year, y = suicides_no, colour = suicides_no)) +
-  geom_point(alpha = 0.3,  position = position_jitter()) + stat_smooth(method = "lm") +
-  ylim(c(0, 350))
-
-
-ireland_gdp_suicideRatess <- ireland_gdp_suicideRates %>% 
-  filter(country == "Ireland") %>%
-  group_by(Year) %>% 
-  summarise(total_suicides = sum(su_numbers,na.rm=TRUE)) %>%
-  arrange(desc(total_suicides))
-
-ggplot(ireland_gdp_suicideRatess,aes(x=year,y=total_suicides,fill=-total_suicides))+
-  geom_col() +
-  labs(x="Year",y="Count",title="Suicides in USA")+
-  theme(plot.title = element_text(size=15,face="bold"))
-
-ggplot(dfr, aes(Year)) + 
-  geom_line(aes(y=GDP), colour="green") + 
-  geom_line(aes(y = su_numbers) , colour="orange") 
-
-
-
-####### Linear Regression Model
-# So we should analyse what factors (gdp i.e.) have an impact on the suicide numbers
-
-linear_model_dataset <- master_dataset
-
-# if row contains .. then return NA
-linear_model_dataset[linear_model_dataset == ".."] <- NA
-
-linear_model_dataset$`GDP Per Capita` <- as.numeric(as.character(linear_model_dataset$`GDP Per Capita`))
-
-linear_model_dataset <- na.omit(linear_model_dataset)
-
-linear_model_dataset$`GDP Per Capita` <- as.numeric(as.character(linear_model_dataset$`GDP Per Capita`))
-linear_model_dataset$population <- as.numeric(as.character(linear_model_dataset$population))
-
-
-country_year <- linear_model_dataset %>%
-  dplyr::group_by(country, year) %>%
-  dplyr::summarize(suicides = sum(suicides_no), 
-            population = sum(population), 
-            suicide_per_100k = (suicides / population) * 100000, 
-            gdp_per_capita = mean(linear_model_dataset$`GDP Per Capita`))
-
-country_mean_gdp <- linear_model_dataset %>%
-  group_by(country) %>%
-  summarize(suicide_per_100k = (sum(as.numeric(suicides_no)) / sum(as.numeric(population))) * 100000, 
-            gdp_per_capita = mean(linear_model_dataset$`GDP Per Capita`))
-
-
-#testing this, as gdp increases vs suicide for european countries
-
-testing_means <- linear_model_dataset %>%
-  dplyr::group_by(country) %>%
-  dplyr::summarize(suicide_per_100k = (sum(as.numeric(suicides_no)) / sum(as.numeric(population))) * 100000, 
-            gdp_per_capita = mean(linear_model_dataset$`GDP Per Capita`))
-
-testing_means <- cbind(testing_means, linear_model_dataset[match(country_mean_gdp$country, linear_model_dataset$country), ])
-
-testing_means <- testing_means[, -c(6:9)]
-
-ggplot(testing_means, aes(x = testing_means$`GDP Per Capita`, y = suicide_per_100k, col = country)) + 
-  geom_point() + 
-  scale_x_continuous(labels=scales::dollar_format(prefix="$"), breaks = seq(0, 70000, 10000)) 
-
-# KMEANS
-k <- filtered_countries_only_europe
-View(k)
-k$country <- NULL
-
-#numeric
-k$suicide_per_100k <- as.numeric(as.character(k$suicide_per_100k))
-k$`GDP Per Capita` <- as.numeric(as.character(k$`GDP Per Capita`))
-k$`GNI (Current US$)` <- as.numeric(as.character(k$`GNI (Current US$)`))
-k$`GNI Growth (Annual %)` <- as.numeric(as.character(k$`GNI Growth (Annual %)`))
-k$`GNI Per Capita (Annual %)` <- as.numeric(as.character(k$`GNI Per Capita (Annual %)`))
-k$`Unemployment (% of total labour force` <- as.numeric(as.character(k$`Unemployment (% of total labour force`))
-
-normalize <- function(x) {
-  return((x - min(x))/(max(x) - min(x)))
-}
-k[, 1:6] <- normalize(k[, 1:6])
-set.seed(999)
-rnum <- sample(rep(1:153))
-k <- k[rnum, ] 
-k <- na.omit(k)
-
-k_means_clus <- kmeans(k[c(1, 2, 3, 4, 5, 6)], 3)
-plot(k[, ], col = k_means_clus$cluster)
